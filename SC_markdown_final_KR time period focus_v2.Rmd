@@ -27,6 +27,7 @@ library(FSA)
 library(effects)
 library(gplots)
 library(car)
+library(here)
 ```
 
 # Import and Prepare Data
@@ -34,7 +35,7 @@ library(car)
 Format data to evaluate differences between time periods of interest.
 
 ```{r}
-df <- read_excel("~/Projects/Field Lab SC/RPD calculation files from R/RPD data from full data set_v3.xlsx")
+df <- read_excel(here("RPD data from full data set_v3.xlsx"))
 
 df$collection_date2 <- as.POSIXct(df$collection_date2, format="%m/%d/%Y %H:%M")
 
@@ -454,7 +455,6 @@ model <- aov(rpd ~ time_period_focus, data = df_7200_above10K) #not significant 
 summary(model)
 
 #export R file of focus data set
-
-write_xlsx(df_1_focus,'C:\\Users\\krein\\OneDrive - California Department of Water Resources\\Documents\\Projects\\Field Lab SC\\focus_data_set_final.xlsx')
+write_xlsx(df_1_focus, here("focus_data_set_final.xlsx"))
 ```
 
