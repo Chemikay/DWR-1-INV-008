@@ -123,39 +123,37 @@ hist(df_1_focus_above10K$rpd, breaks = 100, main = "Figure 6. RPD above 10,000")
 shapiro.test(df_1_focus_above10K$rpd) #data at or above 10K uS/cm are not normal, p=3.399e-07
 
 #Plot values < 10000 uS/cm
-ggplot(df_1_focus, aes(y = rpd, x = field_result)) +
+ggplot(df_1_focus_below10K, aes(y = rpd, x = field_result)) +
   geom_point() +
   ylab("RPD (%)") + 
   xlab("SC (uS/cm)")+
-  xlim(0,10000)+
   ggtitle("Figure 7. RPD of Field SC (< 10000 uS/cm)") +
   facet_grid(~time_period_focus) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
 #Plot values =< 10000 uS/cm
-ggplot(df_1_focus, aes(y = rpd, x = field_result)) +
+ggplot(df_1_focus_above10K, aes(y = rpd, x = field_result)) +
   geom_point() +
   ylab("RPD (%)") +
   ylim(-5,5)+
   xlab("SC (uS/cm)")+
-  xlim(10000,50000)+
   ggtitle("Figure 8. RPD of Field SC (>= 10000 uS/cm)") +
   facet_grid(~time_period_focus) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
 #transformations run that did not yield a normally-distributed dataset.
-#df <- df %>% 
-  #mutate(rpd_sqr = rpd^2,
-         #log_abs_rpd = log(abs(rpd)+0.1))
+df_1_focus_t <- df_1_focus %>% 
+  mutate(rpd_sqr = rpd^2,
+         log_abs_rpd = log(abs(rpd)+0.1))
 
-#shapiro.test(df$rpd_sqr)
+shapiro.test(df_1_focus_t$rpd_sqr)
 
-#shapiro.test(df$log_abs_rpd)
+shapiro.test(df_1_focus_t$log_abs_rpd)
 ```
 
 The RPD across the periods 1 & 2 (Fig. 1, Fig. 2) is not normally distributed (Fig. 3).The Shapiro-Wilk test did not find normality in the data or two transformations of it (p < 0.05). Data were filtered above and below 10,000 µS/cm and the normality of each dataset was also not normal. Higher RPDs are more commonly observed at specific conductance (SC) measurements < 10,000 µS/cm (Fig. 4, Fig. 5).
 
-High RPDs are observed at SC within drinking water standards (200 - 800 µS/cm) and through brackish conditions (<10,000 µS/cm). The median SC of the dataset (~500 µS/cm) is less than the mean value (~2950 µS/cm) identifying a skewness in the the dataset that is the likely cause that the data is not normal.
+High RPDs are observed at SC within drinking water standards (200 - 800 µS/cm) and through brackish conditions (<10,000 µS/cm). The median SC of the dataset (~500 µS/cm) is less than the mean value (~2800 µS/cm) identifying a skewness in the the dataset that is the likely cause that the data is not normal.
 
 Conductivity sensors used in the field are not commonly calibrated below 1000 microseimens per centimeter (µS/cm) per the manufacturers recommendations. Current department guidance includes field programs checking the conductivity sensor to ensure the sensor reads < 5 µS/cm in air.
 
@@ -283,7 +281,6 @@ Look for statistical difference within each field program between time periods 1
 
 ```{r}
 #table by data owner
-
 dataowner <- df_1_focus %>%
   group_by(data_owner_id,
            time_period_focus) %>%
