@@ -294,8 +294,8 @@ dataowner1 <- dataowner %>%
 
 table4 <- flextable(dataowner1)
 
-table4 <- theme_vanilla(table1)
-table4 <- set_caption(table1, caption = "Table 4. Sample counts across time periods 1 & 2 by data owner ")
+table4 <- theme_vanilla(table4)
+table4 <- set_caption(table4, caption = "Table 4. Sample counts across time periods 1 & 2 by data owner ")
 
 table4
 
