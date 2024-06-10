@@ -1,0 +1,443 @@
+---
+title: "Conductivity Investigation Winter 2022"
+author: "Katheryn Rein"
+date: "2024-04-15"
+output: html_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, echo = FALSE, message = FALSE, fig.width=5, fig.height=5)
+```
+# Purpose
+
+This is a R Markdown HTML document to supplement DWR-1-INV-008 Conductivity Investigation Winter 2022 which explores cleaned up data compiled from samples collected between July 2022 and February 2023 that had both field and laboratory derived conductivity reported in the DWR Water Data Library (WDL).
+
+Period of Concern: 11/01/2022-02/28/2023 
+Reference Period: 07/01/2022-10/31/2022
+
+Relative percent differences (RPDs) between these field and laboratory reported values are evaluated here to explore relative percent differences (RPD) between DWR field and Bryte Lab specific conductance (SC) measurements. Samples collected between July 2022 and February 2023 are evaluated here. Data were exported from the WDL database. See "lab vs field sc investigation final code_v4.R" script for data cleaning and reorganization.
+
+
+```{r, echo = FALSE}
+library(writexl)
+library(tidyverse)
+library(data.table)
+library(readxl)
+library(janitor)
+library(ggpubr)
+library(lubridate)
+library(flextable)
+library(beanplot)
+library(FSA)
+library(effects)
+library(gplots)
+library(car)
+library(here)
+```
+# Import and Prepare Data
+```
+Format data to evaluate differences between time periods of interest
+```{r}
+
+df <- read_excel("~/Projects/Field Lab SC/DWR-1-INV-008/R/RPD data from full data set_v4.xlsx")
+
+df$collection_date2 <- as.POSIXct(df$collection_date2, format="%m/%d/%Y %H:%M")
+
+df = mutate(df, time_period_focus = case_when(collection_date2 >= as.Date("2022-11-01")~"1", 
+          collection_date2 < as.Date("2022-11-01") &
+          collection_date2 >= as.Date("2022-07-01")~"2")) 
+                                         
+
+df$time_period_focus <- as.numeric(df$time_period_focus)
+
+
+#remove data for data owners 3467 and 6200 since neither have data in both the period of concern and reference period.This removes 25 samples with 4189 remaining.
+
+df_1 = filter(df, data_owner_id=="6301"| data_owner_id=="1860"| data_owner_id=="2040"| data_owner_id=="0310"|
+                data_owner_id=="4804"|data_owner_id=="6301" |data_owner_id=="7200")
+
+#remove data not in period of concern ("1") or reference period ("2"), get a total of 952 samples
+df_1_focus = filter(df_1, time_period_focus=="1" | time_period_focus=="2" )
+
+#summary of period of concern ("1") and reference period ("2")
+
+time_dates <- df_1_focus %>%
+  group_by(time_period_focus) %>%
+  summarize(n = n(),
+            min_date = min(as.Date(collection_date2)),
+            max_date = max(as.Date(collection_date2)))
+
+tableA <- flextable(time_dates)
+
+tableA <- width(tableA, width = 1.5)
+
+tableA <- theme_vanilla(tableA)
+tableA <- set_caption(tableA, caption = "Table A. Sample counts and date ranges for time periods of focus")
+
+tableA
+
+#Explore Data
+
+ggplot(df_1_focus, aes(y = rpd, x = collection_date2)) +
+  geom_point() +
+  ggtitle("Figure 1. The RPD of Field and Lab SC Results across period of interest and reference period ") +
+  ylab("RPD (%)") + 
+  xlab("Collection date")
+
+hist(df_1_focus$rpd, breaks=100, main = "Figure 2. Conductivity RPD distribution") 
+
+qqnorm(df_1_focus$rpd, main = "Figure 3. Normal Q-Q Plot")
+
+qqline(df_1_focus$rpd, main = "Figure 3. Normal Q-Q Plot") #this doesn't work is this needed?
+
+summary(df_1_focus$field_result)
+
+summary(df_1_focus$lab_result)
+
+summary(df_1_focus$rpd)
+  
+shapiro.test(df_1_focus$rpd) #full focus data set is not normal, p<2.2e-16
+
+ggplot(df_1_focus, aes(y = rpd, x = field_result)) +
+  geom_point() +
+  ylab("RPD (%)") + 
+  xlab("Field SC (uS/cm)")+
+  ggtitle("Figure 4. RPD of Field SC") +
+  facet_grid(~time_period_focus) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+# Filter data to below 10,000 uS/cm
+
+df_1_focus_below10K <- df_1_focus %>% 
+  filter(field_result < 10000 & lab_result < 10000) #872/952 samples have field and lab result <10,000 uS/cm
+
+shapiro.test(df_1_focus_below10K$rpd) #data below 10K uS/cm are not normal across time periods 1 & 2, p<2.2e-16
+
+hist(df_1_focus_below10K$rpd, breaks = 100, main = "Figure 5. RPD below 10,000")
+
+# Filter data to above 10,000 uS/cm
+
+df_1_focus_above10K <- df_1_focus %>% 
+  filter(field_result >= 10000 | lab_result >=10000) #80/952 samples have field and/or lab result > or = 10,000 uS/cm
+
+hist(df_1_focus_above10K$rpd, breaks = 100, main = "Figure 6. RPD above 10,000")
+
+shapiro.test(df_1_focus_above10K$rpd) #data at or above 10K uS/cm are not normal, p=3.399e-07
+
+#Plot values < 10000 uS/cm
+ggplot(df_1_focus, aes(y = rpd, x = field_result)) +
+  geom_point() +
+  ylab("RPD (%)") + 
+  xlab("SC (uS/cm)")+
+  xlim(0,10000)+
+  ggtitle("Figure 7. RPD of Field SC (< 10000 uS/cm)") +
+  facet_grid(~time_period_focus) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+#Plot values =< 10000 uS/cm
+ggplot(df_1_focus, aes(y = rpd, x = field_result)) +
+  geom_point() +
+  ylab("RPD (%)") +
+  ylim(-5,5)+
+  xlab("SC (uS/cm)")+
+  xlim(10000,50000)+
+  ggtitle("Figure 8. RPD of Field SC (>= 10000 uS/cm)") +
+  facet_grid(~time_period_focus) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+```
+The RPD across the periods 1 & 2 (Fig. 1, Fig. 2) is not normally distributed (Fig. 3).The Shapiro-Wilk test did not find normality in the data or two transformations of it (p \< 0.05). Data were filtered above and below 10,000 µS/cm and the normality of each dataset was also not normal.Higher RPDs are more commonly observed at specific conductance (SC) measurements \< 10,000 µS/cm (Fig. 4, Fig. 5). ???
+
+High RPDs are observed at SC within drinking water standards (200 - 800 µS/cm) and through brackish conditions (\<10,000 µS/cm). The median SC of the dataset (\~500 µS/cm) is less than the mean value (\~2950 µS/cm) identifying a skewness in the the dataset that is the likely cause that the data is not normal.???
+
+Conductivity sensors used in the field are not commonly calibrated below 1000 microseimens per centimeter (µS/cm) per the manufacturers recommendations. Current department guidance includes field programs checking the conductivity sensor to ensure the sensor reads \< 5 µS/cm in air.
+
+#Summary Tables
+
+Sample counts and RPDs across period of interest and reference period and filtered for above and below 10,000 uS/cm
+```{r}
+
+time2 <- df_1_focus %>%
+  group_by(time_period_focus) %>%
+  summarize(n = n(),
+            min_field_SC = round(min(field_result), 0),
+            max_field_SC = round(max(field_result),0),
+            min_lab_SC = round(min(lab_result),0),
+            max_lab_sc = round(max(lab_result),0),
+            min_rpd = round(min(rpd),2),
+            max_rpd = round(max(rpd),2),
+            mean_rpd = round(mean(rpd), 2),
+            median_rpd = round(median(rpd), 2))
+
+
+table1 <- flextable(time2)
+
+table1 <- theme_vanilla(table1)
+table1 <- set_caption(table1, caption = "Table 1. SC Measurements across period of concern and reference period")
+
+table1
+
+#data < 10000 uS/cm between period of concern and reference period
+
+time2_below10K <- df_1_focus_below10K %>%
+  group_by(time_period_focus) %>%
+  summarize(n = n(),
+            min_field_SC = round(min(field_result), 0),
+            max_field_SC = round(max(field_result),0),
+            min_lab_SC = round(min(lab_result),0),
+            max_lab_sc = round(max(lab_result),0),
+            min_rpd = round(min(rpd),2),
+            max_rpd = round(max(rpd),2),
+            mean_rpd = round(mean(rpd), 2),
+            median_rpd = round(median(rpd), 2))
+
+table2 <- flextable(time2_below10K)
+
+table2 <- theme_vanilla(table2)
+table2 <- set_caption(table2, caption = "Table 2. SC Measurements < 10,000 uS/cm across period of concern and reference period")
+
+table2
+
+#data >= 10000 uS/cm across period of concern and reference period
+
+time2_above10K <- df_1_focus_above10K %>%
+  group_by(time_period_focus) %>%
+  summarize(n = n(),
+            min_field_SC = round(min(field_result), 0),
+            max_field_SC = round(max(field_result),0),
+            min_lab_SC = round(min(lab_result),0),
+            max_lab_sc = round(max(lab_result),0),
+            min_rpd = round(min(rpd),2),
+            max_rpd = round(max(rpd),2),
+            mean_rpd = round(mean(rpd), 2),
+            median_rpd = round(median(rpd), 2))
+
+table3 <- flextable(time2_above10K)
+
+table3 <- theme_vanilla(table3)
+table3 <- set_caption(table3, caption = "Table 3. SC Measurements > 10,000 uS/cm across period of concern and reference period")
+
+table3
+
+time_grouped <- df_1_focus %>%
+  group_by(data_owner_id, time_period_focus) %>%
+  summarize(n = n(),
+            min_field_SC = round(min(field_result), 0),
+            max_field_SC = round(max(field_result),0),
+            min_lab_SC = round(min(lab_result),0),
+            max_lab_SC = round(max(lab_result),0),
+            min_rpd = round(min(rpd),2),
+            max_rpd = round(max(rpd),2),
+            mean_rpd = round(mean(rpd), 2),
+            median_rpd = round(median(rpd), 2))
+
+table5 <- flextable(time_grouped)
+
+table5 <- theme_vanilla(table5)
+table5 <- set_caption(table5, caption = "Table 5. Conductivity Summary by Group and Time Period")
+
+table5
+
+```
+#Statistics
+
+```
+A Kruskal-Wallis rank sum test was used to assess statistical significance of RPDs between the period of concern and reference period. This is a nonparametric hypothesis test, similar to a one-way ANOVA) identified significant differences between the two time periods only when the field and/or lab conductivity value were >10,000 uS/cm. 
+
+```{r}
+ggboxplot(df_1_focus, x = "time_period_focus", y = "rpd", 
+          color = "time_period_focus",
+          ylab = "RPD (%)", xlab = "time period") +
+  theme(text=element_text(size=20)) +
+  ggtitle("Figure 7. RPD across timeperiods")
+
+beanplot(rpd ~ time_period_focus, data = df_1_focus, col = c("#CAB2D6", "#33A02C", "#B2DF8A"), border = 'blue', #border = "#CAB2D6', 
+         axes = TRUE,
+         xlab = "timeperiod", ylab = "RPD (%)")
+
+#test for statistical significance in RPD between period of concern and reference period
+kruskal.test(rpd ~ time_period_focus, data = df_1_focus) #significant but close, p=0.0468
+
+#values < 10000
+kruskal.test(rpd ~ time_period_focus, data = df_1_focus_below10K) #not significant, p=0.12
+
+#values >= 10000
+kruskal.test(rpd ~ time_period_focus, data = df_1_focus_above10K) #significant, p=4.81e-5
+
+#look at statistical significance between period of concern and reference period with major outlier removed, sample OM0123B0054
+df_no_outlier1 = filter(df_1_focus, dwr_sample_code != "OM0123B0054")
+
+#test for statistical significance in RPD between period of concern and reference period with sample OM0123B0054 removed
+kruskal.test(rpd ~ time_period_focus, data = df_no_outlier1) #significant but close, p=0.04932 so did not impact much
+
+```
+Look for statistical difference within each field program between period of concern and reference period
+```{r}
+#table by data owner
+
+dataowner <- df_1_focus %>%
+  group_by(data_owner_id,
+           time_period_focus) %>%
+  summarize(n = n(),
+            min_SC = round(min(field_result),0),
+            max_SC = round(max(field_result),0))
+
+dataowner1 <- dataowner %>% 
+  pivot_wider(names_from = time_period_focus,
+              values_from = c(n, min_SC, max_SC))
+
+table4 <- flextable(dataowner1)
+
+table4 <- theme_vanilla(table1)
+table4 <- set_caption(table1, caption = "Table 4. Sample counts across period of concern and reference period by data owner ")
+
+table4
+
+#"0310" "1860" "2040" "3467" (no samples in both the period of concern and reference period) "4804" "6301" "7200" "6200" (no samples in both the period of concern and reference period)
+
+#data owner 0310 (all subsets not normal)
+#period of concern vs reference period not significant
+#<10K period of concern vs reference period not significant
+#>10K period of concern vs reference period is significant
+
+df_0310 <- df_1_focus %>% 
+  filter(data_owner_id == "0310")
+
+summary(df_0310)
+
+df_0310_below10K <- df_1_focus_below10K %>% 
+   filter(data_owner_id == "0310")
+
+df_0310_above10K <- df_1_focus_above10K %>% 
+   filter(data_owner_id == "0310")
+
+shapiro.test(df_0310$rpd) #not normal, p<2.2e-16
+shapiro.test(df_0310_below10K$rpd) #not normal, p<2.2e-16
+shapiro.test(df_0310_above10K$rpd) #not normal, p=3.691e-7
+
+kruskal.test(rpd ~ time_period_focus , data = df_0310) #not significant, p=0.5305
+
+kruskal.test(rpd ~ time_period_focus , data = df_0310_below10K) #not significant, p=0.7814
+
+kruskal.test(rpd ~ time_period_focus , data = df_0310_above10K) #significant, p=5.431e-05
+
+time_0310_above10K <- df_0310_above10K %>%
+  group_by(time_period_focus) %>%
+  summarize(n = n(),
+            min_field_SC = round(min(field_result), 0),
+            max_field_SC = round(max(field_result),0),
+            min_lab_SC = round(min(lab_result),0),
+            max_lab_sc = round(max(lab_result),0),
+            min_rpd = round(min(rpd),2),
+            max_rpd = round(max(rpd),2),
+            mean_rpd = round(mean(rpd), 2),
+            median_rpd = round(median(rpd), 2))
+            
+time_0310 <- df_0310 %>%
+  group_by(time_period_focus) %>%
+  summarize(n = n(),
+            min_field_SC = round(min(field_result), 0),
+            max_field_SC = round(max(field_result),0),
+            min_lab_SC = round(min(lab_result),0),
+            max_lab_sc = round(max(lab_result),0),
+            min_rpd = round(min(rpd),2),
+            max_rpd = round(max(rpd),2),
+            mean_rpd = round(mean(rpd), 2),
+            median_rpd = round(median(rpd), 2))
+
+
+#data owner 1860 - not normal, no values >10000 collected in period of concern and reference period
+#period of concern vs reference period significant
+#<10K period of concern vs reference period significant
+#>10K period of concern vs reference period N/A
+
+df_1860 <- df_1_focus %>% 
+  filter(data_owner_id == "1860")
+
+summary(df_1860)
+
+shapiro.test(df_1860$rpd) #not normal, p=4.226e-14
+
+kruskal.test(rpd ~ time_period_focus , data = df_1860) #significant, p=0.01245
+
+time_1860 <- df_1860 %>%
+  group_by(time_period_focus) %>%
+  summarize(n = n(),
+            min_field_SC = round(min(field_result), 0),
+            max_field_SC = round(max(field_result),0),
+            min_lab_SC = round(min(lab_result),0),
+            max_lab_sc = round(max(lab_result),0),
+            min_rpd = round(min(rpd),2),
+            max_rpd = round(max(rpd),2),
+            mean_rpd = round(mean(rpd), 2),
+            median_rpd = round(median(rpd), 2))
+
+#data owner 2040 - not normal, no values > 10000 collected in period of concern and reference period
+#period of concern vs reference period significant
+#<10K period of concern vs reference period significant
+#>10K period of concern vs reference period N/A
+
+df_2040 <- df_1_focus %>% 
+  filter(data_owner_id == "2040")
+
+summary(df_2040)
+
+shapiro.test(df_2040$rpd) #not normal, p<2.2e-16
+
+kruskal.test(rpd ~ time_period_focus , data = df_2040) #significant, p=4.94e-6
+
+
+#data owner 4804 - not normal, no values > 10000 collected in period of concern and reference period
+#period of concern vs reference period significant
+#<10K period of concern vs reference period significant
+#>10K period of concern vs reference period N/A
+
+df_4804 <- df_1_focus %>% 
+  filter(data_owner_id == "4804")
+
+summary(df_4804)
+
+shapiro.test(df_4804$rpd) #not normal, p<2.2e-16
+
+kruskal.test(rpd ~ time_period_focus , data = df_4804) #significant, p=1.888e-12
+
+#data owner 6301 - not normal, no values > 10000 collected in period of concern and reference period
+#period of concern vs reference period significant
+#<10K period of concern vs reference period significant
+#>10K period of concern vs reference period N/A
+
+df_6301 <- df_1_focus %>% 
+  filter(data_owner_id == "6301")
+
+summary(df_6301)
+
+shapiro.test(df_6301$rpd) #not normal, p=3.493e-10
+
+kruskal.test(rpd ~ time_period_focus , data = df_6301) #significant, p=0.009539
+
+#data owner 7200 - not normal for full range & below 10K, normal >= 10K
+#period of concern vs reference period significant
+#<10K period of concern vs reference period significant
+#>10K period of concern vs reference period not signficant but on the cusp with very small sample size
+
+df_7200 <- df_1_focus %>% 
+  filter(data_owner_id == "7200")
+
+summary(df_7200)
+
+df_7200_below10K <- df_1_focus_below10K %>% 
+   filter(data_owner_id == "7200")
+
+df_7200_above10K <- df_1_focus_above10K %>% 
+   filter(data_owner_id == "7200")
+
+
+shapiro.test(df_7200$rpd) #not normal, p=8.826e-08
+shapiro.test(df_7200_below10K$rpd) #not normal, p=5.539e-07
+shapiro.test(df_7200_above10K$rpd) #normal, p=0.4983
+
+kruskal.test(rpd ~ time_period_focus , data = df_7200) #significant, p=0.01218
+
+kruskal.test(rpd ~ time_period_focus , data = df_7200_below10K) #significant, p=0.006142
+
+model <- aov(rpd ~ time_period_focus, data = df_7200_above10K) #not significant but barely, p=0.053, only 5 samples though
+summary(model)
