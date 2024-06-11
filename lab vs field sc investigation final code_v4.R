@@ -4,14 +4,12 @@ library(data.table)
 library(readxl)
 library(janitor)
 
-update.packages(ask=FALSE, checkBuilt=TRUE)
-
 #Pull in all original WDL data sets into one dataframe
-filelist = list.files(path = "~/Projects/Field Lab SC/Raw files from WDL/",    
+filelist <- list.files(path = here("WDL Conductivity Data"),    
                       pattern = "*.xlsx",
                       full.names = F) 
 
-gfg_data =  list.files(path = "~/Projects/Field Lab SC/Raw files from WDL/",    
+gfg_data <-  list.files(path = here("WDL Conductivity Data"),    
                        pattern = "*.xlsx",
                        full.names = T) %>%
   lapply(read_excel) 
