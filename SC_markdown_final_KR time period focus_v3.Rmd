@@ -34,11 +34,11 @@ library(car)
 library(here)
 ```
 # Import and Prepare Data
-```
+
 Format data to evaluate differences between time periods of interest
 ```{r}
 
-df <- read_excel("~/Projects/Field Lab SC/DWR-1-INV-008/R/RPD data from full data set_v4.xlsx")
+df <- read_excel(here("RPD data from full data set_v3.xlsx"))
 
 df$collection_date2 <- as.POSIXct(df$collection_date2, format="%m/%d/%Y %H:%M")
 
@@ -150,7 +150,8 @@ The RPD across the periods 1 & 2 (Fig. 1, Fig. 2) is not normally distributed (F
 High RPDs are observed at SC within drinking water standards (200 - 800 µS/cm) and through brackish conditions (\<10,000 µS/cm). The median SC of the dataset (\~500 µS/cm) is less than the mean value (\~2950 µS/cm) identifying a skewness in the the dataset that is the likely cause that the data is not normal.???
 
 Conductivity sensors used in the field are not commonly calibrated below 1000 microseimens per centimeter (µS/cm) per the manufacturers recommendations. Current department guidance includes field programs checking the conductivity sensor to ensure the sensor reads \< 5 µS/cm in air.
-
+```{r}
+```
 #Summary Tables
 
 Sample counts and RPDs across period of interest and reference period and filtered for above and below 10,000 uS/cm
@@ -236,11 +237,11 @@ table5 <- theme_vanilla(table5)
 table5 <- set_caption(table5, caption = "Table 5. Conductivity Summary by Group and Time Period")
 
 table5
+```{r}
 
 ```
 #Statistics
 
-```
 A Kruskal-Wallis rank sum test was used to assess statistical significance of RPDs between the period of concern and reference period. This is a nonparametric hypothesis test, similar to a one-way ANOVA) identified significant differences between the two time periods only when the field and/or lab conductivity value were >10,000 uS/cm. 
 
 ```{r}
