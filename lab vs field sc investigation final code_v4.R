@@ -10,18 +10,16 @@ library(here)
 unzip(zipfile = here("data/raw/WDL Conductivity Data.zip"), exdir = tempdir())
 
 filelist <- list.files(
-  path = tempdir(),    
+  path = file.path(tempdir(), "Raw WDL data exports"),    
   pattern = "*.xlsx$",
-  full.names = FALSE,
-  recursive = TRUE
+  full.names = FALSE
 ) 
 
-gfg_data <-  
+gfg_data <- 
   list.files(
-    tempdir(),    
+    file.path(tempdir(), "Raw WDL data exports"),    
     pattern = "*.xlsx$",
-    full.names = TRUE,
-    recursive = TRUE
+    full.names = TRUE
   ) %>%
   lapply(read_excel) 
 
