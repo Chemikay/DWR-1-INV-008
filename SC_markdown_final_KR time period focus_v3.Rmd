@@ -38,7 +38,7 @@ library(here)
 Format data to evaluate differences between time periods of interest
 ```{r}
 
-df <- read_excel(here("RPD data from full data set_v3.xlsx"))
+df <- read_csv(here("data/processed/RPD data from full data set_v5.csv"))
 
 df$collection_date2 <- as.POSIXct(df$collection_date2, format="%m/%d/%Y %H:%M")
 
@@ -242,8 +242,6 @@ table5 <- theme_vanilla(table5)
 table5 <- set_caption(table5, caption = "Table 5. Conductivity Summary by Group and Time Period")
 
 table5
-```{r}
-
 ```
 #Statistics
 
@@ -446,3 +444,4 @@ kruskal.test(rpd ~ time_period_focus , data = df_7200_below10K) #significant, p=
 
 model <- aov(rpd ~ time_period_focus, data = df_7200_above10K) #not significant but barely, p=0.053, only 5 samples though
 summary(model)
+```

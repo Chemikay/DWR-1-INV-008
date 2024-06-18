@@ -1,4 +1,4 @@
-
+library(writexl)
 library(tidyverse)
 library(data.table)
 library(readxl)
@@ -7,19 +7,21 @@ library(here)
 
 # Pull in all original WDL data sets into one dataframe
 # Unzip folder containing WDL data to a temporary directory
-unzip(zipfile = here("data/raw/WDL Conductivity Data.zip"), exdir = tempdir())
+unzip(zipfile = here("data/raw/Raw files from WDL_restored copy.zip"), exdir = tempdir())
 
 filelist <- list.files(
-  path = file.path(tempdir(), "Raw WDL data exports"),    
+  path = file.path(tempdir(), "Raw files from WDL - restored copy"),    
   pattern = "*.xlsx$",
-  full.names = FALSE
+  full.names = FALSE,
+  recursive = TRUE
 ) 
 
 gfg_data <- 
   list.files(
-    file.path(tempdir(), "Raw WDL data exports"),    
+    file.path(tempdir(), "Raw files from WDL - restored copy"),    
     pattern = "*.xlsx$",
-    full.names = TRUE
+    full.names = TRUE,
+    recursive = TRUE
   ) %>%
   lapply(read_excel) 
 
@@ -79,8 +81,11 @@ gfg_data3 <- filter(gfg_data2a, method == "Std Method 2510-B [1]*" | method == "
   mutate(analyte2 = case_when(analyte1a == "Field Electrical Conductance" ~ "Field Specific Conductance",
                               TRUE ~ analyte1a))
 
-unique(gfg_data3$analyte2)
+str(gfg_data3)
 
+#end addition
+
+unique(gfg_data3$analyte2)
 
 # filter out bottom field SC for per Morgan Battey for DEMP
 # as field SC for DEMP is done at same depth as discrete sample, bottom SC
@@ -147,7 +152,7 @@ data_bound2 %>%
   count(data_owner_id, dwr_sample_code, collection_date2) %>% 
   filter(n > 1)
 
-# There are 182 duplicates, these are either from lab duplicates or duplicates
+# There are 190 duplicates, these are either from lab duplicates or duplicates
   # from crossover on the original data sheets
 # We'll remove these by selecting the first entry
 data_bound3 <- data_bound2 %>% distinct(data_owner_id, dwr_sample_code, collection_date2, .keep_all = TRUE)
@@ -156,7 +161,7 @@ data_bound3 <- data_bound2 %>% distinct(data_owner_id, dwr_sample_code, collecti
   # since this should be enough
 data_bound3 %>% count(dwr_sample_code) %>% filter(n > 1)
 
-# There are 69 sample codes that still have duplicate records
+# There are 6 sample codes that still have duplicate records
 # We'll take a closer look to see why that is
 data_bound3 %>% 
   count(dwr_sample_code) %>% 
@@ -180,4 +185,6 @@ data_bound_rpd <- data_bound4 %>%
   mutate(rpd =  100*((field_result-lab_result)/(field_result + lab_result))/2)
 
 #export R file 
-write_xlsx(data_bound_rpd,"C:\\Users\\krein\\OneDrive - California Department of Water Resources\\Documents\\Projects\\Field Lab SC\\DWR-1-INV-008\\ouput\\RPD data from full data set_v4.xlsx")
+write.csv(data_bound_rpd,here("data/processed/RPD data from full data set_v5.csv"))
+
+           
