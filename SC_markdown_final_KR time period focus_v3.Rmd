@@ -4,9 +4,11 @@ author: "Katheryn Rein"
 date: "2024-04-15"
 output: html_document
 ---
+
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(warning = FALSE, echo = FALSE, message = FALSE, fig.width=5, fig.height=5)
+knitr::opts_chunk$set(warning = FALSE, echo = FALSE, message = FALSE, fig.width = 5, fig.height = 5)
 ```
+
 # Purpose
 
 This is a R Markdown HTML document to supplement DWR-1-INV-008 Conductivity Investigation Winter 2022 which explores cleaned up data compiled from samples collected between July 2022 and February 2023 that had both field and laboratory derived conductivity reported in the DWR Water Data Library (WDL).
@@ -16,9 +18,7 @@ Reference Period: 07/01/2022-10/31/2022
 
 Relative percent differences (RPDs) between these field and laboratory reported values are evaluated here to explore relative percent differences (RPD) between DWR field and Bryte Lab specific conductance (SC) measurements. Samples collected between July 2022 and February 2023 are evaluated here. Data were exported from the WDL database. See "lab vs field sc investigation final code_v4.R" script for data cleaning and reorganization.
 
-
 ```{r, echo = FALSE}
-library(writexl)
 library(tidyverse)
 library(data.table)
 library(readxl)
@@ -33,12 +33,14 @@ library(gplots)
 library(car)
 library(here)
 ```
+
 # Import and Prepare Data
 
 Format data to evaluate differences between time periods of interest
+
 ```{r}
 
-df <- read_excel(here("RPD data from full data set_v3.xlsx"))
+df <- read_csv(here("data/processed/RPD data from full data set_v5.csv"))
 
 df$collection_date2 <- as.POSIXct(df$collection_date2, format="%m/%d/%Y %H:%M")
 
@@ -160,6 +162,7 @@ Conductivity sensors used in the field are not commonly calibrated below 1000 mi
 # Summary Tables
 
 Sample counts and RPDs across period of interest and reference period and filtered for above and below 10,000 uS/cm
+
 ```{r}
 
 time2 <- df_1_focus %>%
@@ -242,9 +245,8 @@ table5 <- theme_vanilla(table5)
 table5 <- set_caption(table5, caption = "Table 5. Conductivity Summary by Group and Time Period")
 
 table5
-```{r}
-
 ```
+
 #Statistics
 
 A Kruskal-Wallis rank sum test was used to assess statistical significance of RPDs between the period of concern and reference period. This is a nonparametric hypothesis test, similar to a one-way ANOVA) identified significant differences between the two time periods only when the field and/or lab conductivity value were >10,000 uS/cm. 
@@ -275,7 +277,9 @@ df_no_outlier1 = filter(df_1_focus, dwr_sample_code != "OM0123B0054")
 kruskal.test(rpd ~ time_period_focus, data = df_no_outlier1) #significant but close, p=0.04932 so did not impact much
 
 ```
+
 Look for statistical difference within each field program between period of concern and reference period
+
 ```{r}
 #table by data owner
 
@@ -446,3 +450,4 @@ kruskal.test(rpd ~ time_period_focus , data = df_7200_below10K) #significant, p=
 
 model <- aov(rpd ~ time_period_focus, data = df_7200_above10K) #not significant but barely, p=0.053, only 5 samples though
 summary(model)
+```
