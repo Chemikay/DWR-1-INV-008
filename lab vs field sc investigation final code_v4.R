@@ -1,4 +1,3 @@
-library(writexl)
 library(tidyverse)
 library(data.table)
 library(readxl)
@@ -12,16 +11,14 @@ unzip(zipfile = here("data/raw/Raw files from WDL_restored copy.zip"), exdir = t
 filelist <- list.files(
   path = file.path(tempdir(), "Raw files from WDL - restored copy"),    
   pattern = "*.xlsx$",
-  full.names = FALSE,
-  recursive = TRUE
+  full.names = FALSE
 ) 
 
 gfg_data <- 
   list.files(
     file.path(tempdir(), "Raw files from WDL - restored copy"),    
     pattern = "*.xlsx$",
-    full.names = TRUE,
-    recursive = TRUE
+    full.names = TRUE
   ) %>%
   lapply(read_excel) 
 
@@ -163,28 +160,32 @@ data_bound3 %>% count(dwr_sample_code) %>% filter(n > 1)
 
 # There are 6 sample codes that still have duplicate records
 # We'll take a closer look to see why that is
-data_bound3 %>% 
+dups <- data_bound3 %>% 
   count(dwr_sample_code) %>% 
   filter(n > 1) %>%
   select(-n) %>% 
   left_join(data_bound3, by = join_by(dwr_sample_code))
 
+dups
 # 5 of these are from different data owners, but are otherwise identical
 # 1 of these is from different collection times, but are also otherwise identical
-# We can safely clean up these duplicates by using the sample code as the unique identifier
-data_bound4 <- data_bound3 %>% distinct(dwr_sample_code, .keep_all = TRUE)
+# We can safely clean up these duplicates by deleting the rows with missing
+  # station names
+data_bound4 <- data_bound3 %>% 
+  anti_join(dups) %>% 
+  bind_rows(filter(dups, !is.na(long_station_name)))
 
-# All duplicates should be remove now, but let's check
+# All duplicates should be removed now, but let's check
 data_bound4 %>% 
   count(dwr_sample_code) %>% 
   filter(n > 1)
 
 # All duplicate records are removed
-#perform RPD calculation in data_bound4
+# perform RPD calculation in data_bound4
 data_bound_rpd <- data_bound4 %>% 
-  mutate(rpd =  100*((field_result-lab_result)/(field_result + lab_result))/2)
+  mutate(rpd =  100 * ((field_result - lab_result) / (field_result + lab_result) / 2))
 
 #export R file 
-write.csv(data_bound_rpd,here("data/processed/RPD data from full data set_v5.csv"))
+write_csv(data_bound_rpd, here("data/processed/RPD data from full data set_v5.csv"))
 
            
