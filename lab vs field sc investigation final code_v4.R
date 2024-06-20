@@ -183,7 +183,7 @@ data_bound4 %>%
 # All duplicate records are removed
 # perform RPD calculation in data_bound4
 data_bound_rpd <- data_bound4 %>% 
-  mutate(rpd =  100 * ((field_result - lab_result) / (field_result + lab_result) / 2))
+  mutate(rpd =  100 * ((field_result - lab_result) / ((field_result + lab_result) / 2)))
 
 #export R file 
 write_csv(data_bound_rpd, here("data/processed/RPD data from full data set_v5.csv"))
